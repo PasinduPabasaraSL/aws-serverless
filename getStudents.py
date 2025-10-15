@@ -2,20 +2,45 @@ import json
 import boto3
 
 def lambda_handler(event, context):
-    # Initialize a DynamoDB resource object for the specified region
     dynamodb = boto3.resource('dynamodb', region_name='ap-southeast-1')
-
-    # Select the DynamoDB table named 'studentData'
     table = dynamodb.Table('studentData')
 
-    # Scan the table to retrieve all items
-    response = table.scan()
-    data = response['Items']
+    try:
+        response = table.scan()
+        items = response.get('Items', [])
 
-    # If there are more items to scan, continue scanning until all items are retrieved
-    while 'LastEvaluatedKey' in response:
-        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
-        data.extend(response['Items'])
+        while 'LastEvaluatedKey' in response:
+            response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+            items.extend(response.get('Items', []))
 
-    # Return the retrieved data
-    return data
+        normalized = [{
+            "studentid": item.get("studenid") or item.get("studentid"),
+            "name": item.get("name"),
+            "class": item.get("class"),
+            "age": item.get("age")
+        } for item in items]
+
+        return {
+            "isBase64Encoded": False,
+            "statusCode": 200,
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type"
+            },
+            "body": json.dumps(normalized)
+        }
+
+    except Exception as e:
+        print("Error:", str(e))
+        return {
+            "isBase64Encoded": False,
+            "statusCode": 500,
+            "headers": {
+                "Access-Control-Allow-Origin": "*"
+            },
+            "body": json.dumps({
+                "message": "Error retrieving student data",
+                "error": str(e)
+            })
+        }
