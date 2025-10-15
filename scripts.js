@@ -1,7 +1,6 @@
 // Add your API endpoint here
-var API_ENDPOINT = "API_ENDPOINT";
+var API_ENDPOINT = "https://fe5t4bkob0.execute-api.ap-southeast-1.amazonaws.com/prod";
 
-// AJAX POST request to save student data
 document.getElementById("savestudent").onclick = function(){
     var inputData = {
         "studentid": $('#studentid').val(),
@@ -16,32 +15,56 @@ document.getElementById("savestudent").onclick = function(){
         contentType: 'application/json; charset=utf-8',
         success: function (response) {
             document.getElementById("studentSaved").innerHTML = "Student Data Saved!";
+            alert("Student Data Saved!");
+            $('#studentid').val('');
+            $('#name').val('');
+            $('#class').val('');
+            $('#age').val('');
         },
-        error: function () {
-            alert("Error saving student data.");
+        error: function (error) {
+            console.log(error);
         }
     });
 }
 
-// AJAX GET request to retrieve all students
 document.getElementById("getstudents").onclick = function(){  
     $.ajax({
         url: API_ENDPOINT,
         type: 'GET',
         contentType: 'application/json; charset=utf-8',
         success: function (response) {
+            console.log("Raw API Response:", response);
+
+            var students;
+            if (response.body) {
+                try {
+                    students = JSON.parse(response.body);
+                } catch (err) {
+                    console.error("Error parsing body JSON:", err);
+                    students = [];
+                }
+            } else if (response.students) {
+                students = response.students;
+            } else if (Array.isArray(response)) {
+                students = response;
+            } else {
+                students = [];
+            }
+
+            students.sort((a, b) => Number(a.studentid) - Number(b.studentid));
+
             $('#studentTable tr').slice(1).remove();
-            jQuery.each(response, function(i, data) {          
+            jQuery.each(students, function(i, data) {          
                 $("#studentTable").append("<tr> \
                     <td>" + data['studentid'] + "</td> \
                     <td>" + data['name'] + "</td> \
                     <td>" + data['class'] + "</td> \
                     <td>" + data['age'] + "</td> \
-                    </tr>");
+                </tr>");
             });
         },
-        error: function () {
-            alert("Error retrieving student data.");
+        error: function (error) {
+            console.log("Error retrieving students:", error);
         }
     });
-}
+};
